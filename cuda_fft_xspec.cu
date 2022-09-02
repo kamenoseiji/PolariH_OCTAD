@@ -127,15 +127,15 @@ int main(
 			}
 		}
 		//---- Cross Corr
-        /*
 		for(seg_index=0; seg_index<NsegPage; seg_index++){
-		      accumCrossSpec<<<Dg, Db>>>( &cuSpecData[seg_index* NFFTC], &cuSpecData[(seg_index + NsegPage)* NFFTC], cuXSpec,  NFFT2);
+            for(st_index=0; st_index<NST/2; st_index++){
+		      accumCrossSpec<<<Dg, Db>>>( &cuSpecData[(seg_index* NST + st_index)* NFFTC], &cuSpecData[(seg_index* NST + st_index + NST/2)* NFFTC], &cuXSpec[st_index* NFFT2],  NFFT2);
+            }
 		}
-        */
 		//-------- Dump power spectra (autocorr) to shared memory
         // printf("Ready to copy Power Spectra.\n");
 		cudaMemcpy(xspec_ptr, cuPowerSpec, NST* NFFT2* sizeof(float), cudaMemcpyDeviceToHost);
-		// cudaMemcpy(&xspec_ptr[NST* NFFT2], cuXSpec, NFFT2* sizeof(float2), cudaMemcpyDeviceToHost);
+		cudaMemcpy(&xspec_ptr[NST* NFFT2], cuXSpec, (NST/2)* NFFT2* sizeof(float2), cudaMemcpyDeviceToHost);
         // printf("Copy compleated.\n");
 		sops.sem_num = (ushort)SEM_FX; sops.sem_op = (short)1; sops.sem_flg = (short)0; semop( param_ptr->sem_data_id, &sops, 1);
         cudaEventRecord(stop, 0);
