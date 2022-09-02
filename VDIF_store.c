@@ -23,7 +23,6 @@ int main(
 	int		sock;						// Socket ID descriptor
 	int		frameID=0, prevFrameID=0, threadID=0;		    // Frame ID and thread ID (= stream index)
     int     frame_index;
-	int		accum_index  = 0;			// Accumulated part Index
 	struct sockaddr_in	addr;			//  Socket Address
 	struct ip_mreq		mreq;			// Multicast Request
 	FILE	*dumpfile_ptr;				// Dump File
@@ -92,18 +91,18 @@ int main(
 		if( param_ptr->validity & (FINISH + ABSFIN) ){	break; }
 		//-------- Read VDIF packet
 		rv = recv(sock, buf, sizeof(buf), 0);
-        memcpy(&frameID, &buf[4], 3);
-        threadID    = ((buf[11] & 0x03) << 8 ) + buf[10];
-        pageID     = (frameID / FramePerPage) & 0x01;
+        memcpy(&frameID, &buf[4], 3);                       // frameID 200000 frames per sec
+        // threadID    = ((buf[11] & 0x03) << 8 ) + buf[10];       
+        pageID     = (frameID / FramePerPage) & 0x01;       // PageID = 0 or 1
         addr_offset= pageID* PageSize + (frameID % FramePerPage)* VDIFDATA_SIZE;
 		memcpy( &vdifdata_ptr[addr_offset], &buf[VDIFHEAD_SIZE], VDIFDATA_SIZE);
 		//-------- Page refresh?
         if( pageID != prevPageID ){
             prevPageID = pageID;
-            memcpy(&vdifhead_ptr[threadID* VDIFHEAD_SIZE], buf, VDIFHEAD_SIZE); // copy VDIF header
+            memcpy(vdifhead_ptr, buf, VDIFHEAD_SIZE); // copy VDIF header
             VDIFutc( vdifhead_ptr, param_ptr);
             // printf("%02d:%02d:%02d Page=%d FrameID=%d ThreadID=%d ADDR=%ld\n", param_ptr->hour, param_ptr->min, param_ptr->sec, pageID, frameID, threadID, addr_offset);
-		    param_ptr->page_index = pageID;
+		    param_ptr->page_index = prevPageID;
 	 		param_ptr->validity |= ENABLE;
 	 		sops.sem_num = (ushort)SEM_VDIF_PART; sops.sem_op = (short)1; sops.sem_flg = (short)0;
 	 		semop(param_ptr->sem_data_id, &sops, 1);

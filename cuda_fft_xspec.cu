@@ -23,6 +23,7 @@ int main(
 	int		shrd_param_id;				// Shared Memory ID
 	int		index;						// General Index
 	int		seg_index;					// Index for Segment
+	int		st_index;					// Index for stream
 	int		offset[16384];				// Segment offset position
     size_t  PageSize;                   // Page size [bytes]
 	struct	SHM_PARAM	*param_ptr;		// Pointer to the Shared Param
@@ -35,7 +36,7 @@ int main(
 	char	fname_pre[16];
 
 	//-------- CUDA data
-	dim3			Dg(512,1,1), Db(512,1, 1);	// Grid and Block size
+	dim3			Dg, Db(512,1, 1);	// Grid and Block size
 	unsigned char	*cuvdifdata_ptr;	// Pointer to VDIF data in GPU
 	cufftHandle		cufft_plan;			// 1-D FFT Plan, to be used in cufft
 	cufftReal		*cuRealData;		// Time-beased data before FFT, every IF, every segment
@@ -70,7 +71,7 @@ int main(
  	}
 //------------------------------------------ Prepare for CuFFT
 	cudaMalloc( (void **)&cuvdifdata_ptr, PageSize);                                    // for Sampled Data
-	cudaMalloc( (void **)&cuRealData, NsegPage* NFFT* sizeof(cufftReal) );              // For FFT segments in a page
+	cudaMalloc( (void **)&cuRealData, NST* NsegPage* NFFT* sizeof(cufftReal) );              // For FFT segments in a page
 	cudaMalloc( (void **)&cuSpecData, NST* NsegPage* NFFTC* sizeof(cufftComplex) );     // For FFTed spectra
 	cudaMalloc( (void **)&cuPowerSpec,NST* NFFT2* sizeof(float));                       // For autcorr spectra
 	cudaMalloc( (void **)&cuXSpec,    NST/2 * NFFT2* sizeof(float2));                   // For cross-corr spectra
@@ -79,12 +80,12 @@ int main(
 
  	if(cufftPlan1d(&cufft_plan, NFFT, CUFFT_R2C, NST* NsegPage ) != CUFFT_SUCCESS){     // Real->Complex FFT plan
  		fprintf(stderr, "Cuda Error : Failed to create plan.\n"); return(-1); }
-	printf("FFT plan :%d\n", NST* NsegPage);
+	printf("FFT plan :%d (%d stream, %d segments)\n", NST* NsegPage, NST, NsegPage);
 //------------------------------------------ Parameters for S-part format
  	segment_offset(param_ptr, offset);
 	// for(seg_index=0; seg_index< NsegPage; seg_index++){	printf("Offset[%d] = %d\n", seg_index, offset[seg_index]);}
 //------------------------------------------ K5 Header and Data
-	cudaMemset( cuPowerSpec, 0, NST* NFFT2* sizeof(float));		// Clear Power Spectrum to accumulate
+	// cudaMemset( cuPowerSpec, 0, NST* NFFT2* sizeof(float));		// Clear Power Spectrum to accumulate
  	param_ptr->current_rec = -1;
 	setvbuf(stdout, (char *)NULL, _IONBF, 0);   // Disable stdout cache
     sleep(1);
@@ -108,19 +109,21 @@ int main(
 		//-------- SHM -> GPU memory transfer
 		cudaMemcpy(cuvdifdata_ptr, &vdifdata_ptr[PageSize* param_ptr->page_index], PageSize, cudaMemcpyHostToDevice);
 		//-------- Segment Format
-        Dg.x = NFFT/512;
-		for(index=0; index < NsegPage; index ++){
-		    (*segform[modeSW])<<<Dg, Db>>>( &cuvdifdata_ptr[offset[index]], &cuRealData[index* NFFT], NFFT);
+        // * Memory Map in cuRealData *
+        // FFT Segment [seg0 st0]
+        Dg.x = NFFT/512; Dg.y=1; Dg.z=1;
+		for(seg_index=0; seg_index < NsegPage; seg_index ++){
+		    (*segform[modeSW])<<<Dg, Db>>>( &cuvdifdata_ptr[offset[seg_index]], &cuRealData[seg_index* NST* NFFT], NFFT);
 		}
 
 		//-------- FFT Real -> Complex spectrum
 		cufftExecR2C(cufft_plan, cuRealData, cuSpecData);		// FFT Time -> Freq
 
 		//---- Auto Corr
-        Dg.x = NFFTC/512;
+        Dg.x = NFFTC/512; Dg.y=1; Dg.z=1;
 		for(seg_index=0; seg_index<NsegPage; seg_index++){
-            for(index=0; index<NST; index++){
-				accumPowerSpec<<<Dg, Db>>>( &cuSpecData[(seg_index* NST + index)* NFFTC], &cuPowerSpec[index* NFFT2],  NFFT2);
+            for(st_index=0; st_index<NST; st_index++){
+				accumPowerSpec<<<Dg, Db>>>( &cuSpecData[(seg_index* NST + st_index)* NFFTC], &cuPowerSpec[st_index* NFFT2],  NFFT2);
 			}
 		}
 		//---- Cross Corr

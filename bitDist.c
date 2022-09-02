@@ -24,7 +24,7 @@ int main(
 	int		shrd_param_id;				// Shared Memory ID
 	int		index;						// General Index
 	int		seg_index;					// Index for Segment
-	int		threadID;                   // Thread (=IF stream) ID
+	int		st_index;                   // Indes of IF stream
     size_t  PageSize;
 	struct	SHM_PARAM	*param_ptr;		// Pointer to the Shared Param
 	struct	sembuf		sops;			// Semaphore for data access
@@ -80,10 +80,11 @@ int main(
 		semop( param_ptr->sem_data_id, &sops, 1);
 		usleep(8);	// Wait 0.01 msec
 		//-------- BitDist
-        for(threadID=0; threadID < NST; threadID++){
-            bitDist1st2bit(1048576, &vdifdata_ptr[PageSize* (NST*param_ptr->page_index + threadID)], &bitStat[4* threadID]);
-            gaussBit(4, &bitStat[4* threadID], param, param_err );
-            param_ptr->power[threadID] = 1.0 / (param[0]* param[0]);
+        for(st_index=0; st_index < NST; st_index++){
+            // bitDist1st2bit(1048576, &vdifdata_ptr[PageSize* (NST*param_ptr->page_index + threadID)], &bitStat[4* threadID]);
+            (*bitCount[modeSW])(1048576, &vdifdata_ptr[PageSize* (NST*param_ptr->page_index + st_index)], &bitStat[4* st_index]);
+            gaussBit(4, &bitStat[4* st_index], param, param_err );
+            param_ptr->power[st_index] = 1.0 / (param[0]* param[0]);
         }
 		sops.sem_num = (ushort)SEM_POWER; sops.sem_op = (short)1; sops.sem_flg = (short)0; semop( param_ptr->sem_data_id, &sops, 1);
 	}	// End of loop
