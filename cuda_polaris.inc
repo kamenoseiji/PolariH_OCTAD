@@ -300,7 +300,7 @@ __global__ void segform_16st_2bit(
 		// segdata[ 4* length + ix] = (float)(((vdifdata_in[4*ix +1] >> 7) & 0x01) | ((vdifdata_in[4*ix +1] >> 5) & 0x02) ) - bias ;
 		// segdata[ 5* length + ix] = (float)(((vdifdata_in[4*ix +1] >> 5) & 0x01) | ((vdifdata_in[4*ix +1] >> 3) & 0x02) ) - bias ;
 		// segdata[ 6* length + ix] = (float)(((vdifdata_in[4*ix +1] >> 3) & 0x01) | ((vdifdata_in[4*ix +1] >> 1) & 0x02) ) - bias ;
-		// segdata[ 7* length + ix] = (float)(((vdifdata_in[4*ix +1] >> 1) & 0x01) | ((vdifdata_in[4*ix +1] << 1) & 0x02) ) - bias ;
+		// segdata[ 7* length + ix] = (float)(((vdifdata_in[4*ix +1] >> 2) & 0x01) | ((vdifdata_in[4*ix +1] ) & 0x02) ) - bias ;
 		// segdata[ 8* length + ix] = (float)(((vdifdata_in[4*ix +2] >> 7) & 0x01) | ((vdifdata_in[4*ix +2] >> 5) & 0x02) ) - bias ;
 		// segdata[ 9* length + ix] = (float)(((vdifdata_in[4*ix +2] >> 5) & 0x01) | ((vdifdata_in[4*ix +2] >> 3) & 0x02) ) - bias ;
 		// segdata[10* length + ix] = (float)(((vdifdata_in[4*ix +2] >> 3) & 0x01) | ((vdifdata_in[4*ix +2] >> 1) & 0x02) ) - bias ;

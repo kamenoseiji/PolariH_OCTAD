@@ -35,6 +35,7 @@ int main(
 	FILE	*power_ptr[4];				// Power File Pointer to write
 	char	fname_pre[16];
 	unsigned int		bitStat[64];	// 16 IF x 4 level
+	unsigned int		bitRev[4];	    // for bit reversal
 	double	param[2], param_err[2];		// Gaussian parameters derived from bit distribution
 
 	int				modeSW = -1;
@@ -61,11 +62,11 @@ int main(
  		    case 16 :	modeSW = 4; break;
             default :   modeSW = -1; break;
         }
-        usleep(10000);  // Wait 10 msec
+        usleep(100000);  // Wait 100 msec
  	}
     sleep(1);  // Wait 1 sec
 //------------------------------------------ VSI Header and Data
-    PageSize = (size_t)(param_ptr->fsample / 64) * param_ptr->qbit;
+    PageSize = (size_t)(param_ptr->fsample / 64)* param_ptr->qbit* NST; 
  	param_ptr->current_rec = 0;
 	setvbuf(stdout, (char *)NULL, _IONBF, 0);   // Disable stdout cache
 	while(param_ptr->validity & ACTIVE){
@@ -80,12 +81,13 @@ int main(
 		semop( param_ptr->sem_data_id, &sops, 1);
 		usleep(8);	// Wait 0.01 msec
 		//-------- BitDist
+        (*bitCount[modeSW])(1048576, &vdifdata_ptr[PageSize*param_ptr->page_index], bitStat);
         for(st_index=0; st_index < NST; st_index++){
             // bitDist1st2bit(1048576, &vdifdata_ptr[PageSize* (NST*param_ptr->page_index + threadID)], &bitStat[4* threadID]);
-            (*bitCount[modeSW])(1048576, &vdifdata_ptr[PageSize* (NST*param_ptr->page_index + st_index)], &bitStat[4* st_index]);
             gaussBit(4, &bitStat[4* st_index], param, param_err );
             param_ptr->power[st_index] = 1.0 / (param[0]* param[0]);
         }
+        // printf("bitDist %d %d %d %d\n", bitStat[0], bitStat[1], bitStat[2], bitStat[3]);
 		sops.sem_num = (ushort)SEM_POWER; sops.sem_op = (short)1; sops.sem_flg = (short)0; semop( param_ptr->sem_data_id, &sops, 1);
 	}	// End of loop
 /*

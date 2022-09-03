@@ -141,7 +141,12 @@ int main(
         cudaEventRecord(stop, 0);
         cudaEventSynchronize(stop);
         cudaEventElapsedTime(&elapsed_time_ms, start, stop);
-		printf("%4d %03d %02d:%02d:%02d P%d %6.2f [msec]\n", param_ptr->year, param_ptr->doy, param_ptr->hour, param_ptr->min, param_ptr->sec, param_ptr->page_index, elapsed_time_ms);
+		printf("%4d %03d %02d:%02d:%02d P%d %6.2f [msec] %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X\n",
+            param_ptr->year, param_ptr->doy, param_ptr->hour, param_ptr->min, param_ptr->sec, param_ptr->page_index, elapsed_time_ms,
+            vdifdata_ptr[PageSize* param_ptr->page_index], vdifdata_ptr[PageSize* param_ptr->page_index + 1], vdifdata_ptr[PageSize* param_ptr->page_index + 2], vdifdata_ptr[PageSize* param_ptr->page_index + 3],
+            vdifdata_ptr[PageSize* param_ptr->page_index + 4], vdifdata_ptr[PageSize* param_ptr->page_index + 5], vdifdata_ptr[PageSize* param_ptr->page_index + 6], vdifdata_ptr[PageSize* param_ptr->page_index + 7],
+            vdifdata_ptr[PageSize* param_ptr->page_index + 8], vdifdata_ptr[PageSize* param_ptr->page_index + 9], vdifdata_ptr[PageSize* param_ptr->page_index +10], vdifdata_ptr[PageSize* param_ptr->page_index +11],
+            vdifdata_ptr[PageSize* param_ptr->page_index +12], vdifdata_ptr[PageSize* param_ptr->page_index +13], vdifdata_ptr[PageSize* param_ptr->page_index +14], vdifdata_ptr[PageSize* param_ptr->page_index +15]);
         //-------- Save spectra into file
 		for(index=0; index<NST; index++){
 		    if(Afile_ptr[index] != NULL){fwrite(&xspec_ptr[index* NFFT2], sizeof(float), NFFT2, Afile_ptr[index]);}   // Save Power Spectra

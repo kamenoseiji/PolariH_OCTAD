@@ -79,9 +79,7 @@ int main(
     FramePerPage = MaxFrameID / 8;
     printf("FramePerPage : %d\n", FramePerPage);
     prevPageID   = (frameID / FramePerPage) & 0x01;
-/*
-//	if(argc > 1){ 	dumpfile_ptr = fopen(argv[1], "w"); }
-*/
+	if(argc > 1){ 	dumpfile_ptr = fopen(argv[1], "w"); }
 //------------------------------------------ Paging
 	setvbuf(stdout, (char *)NULL, _IONBF, 0); 	// Disable stdout cache
 	param_ptr->validity |= ACTIVE;		// Set Sampling Activity Bit to 1
@@ -96,22 +94,31 @@ int main(
         pageID     = (frameID / FramePerPage) & 0x01;       // PageID = 0 or 1
         addr_offset= pageID* PageSize + (frameID % FramePerPage)* VDIFDATA_SIZE;
 		memcpy( &vdifdata_ptr[addr_offset], &buf[VDIFHEAD_SIZE], VDIFDATA_SIZE);
+        if(argc > 1){
+            fwrite(buf, VDIF_SIZE, 1, dumpfile_ptr);
+        }
 		//-------- Page refresh?
         if( pageID != prevPageID ){
-            prevPageID = pageID;
+		    param_ptr->page_index = prevPageID;
             memcpy(vdifhead_ptr, buf, VDIFHEAD_SIZE); // copy VDIF header
             VDIFutc( vdifhead_ptr, param_ptr);
             // printf("%02d:%02d:%02d Page=%d FrameID=%d ThreadID=%d ADDR=%ld\n", param_ptr->hour, param_ptr->min, param_ptr->sec, pageID, frameID, threadID, addr_offset);
-		    param_ptr->page_index = prevPageID;
 	 		param_ptr->validity |= ENABLE;
 	 		sops.sem_num = (ushort)SEM_VDIF_PART; sops.sem_op = (short)1; sops.sem_flg = (short)0;
 	 		semop(param_ptr->sem_data_id, &sops, 1);
 	 		sops.sem_num = (ushort)SEM_VDIF_POWER; sops.sem_op = (short)1; sops.sem_flg = (short)0;
 	 		semop(param_ptr->sem_data_id, &sops, 1);
+            printf("%04d %03d %02d:%02d:%02d P%d %06d        %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X\n",
+                param_ptr->year, param_ptr->doy, param_ptr->hour, param_ptr->min, param_ptr->sec, pageID, frameID,
+                buf[VDIFHEAD_SIZE + 0], buf[VDIFHEAD_SIZE + 1], buf[VDIFHEAD_SIZE + 2], buf[VDIFHEAD_SIZE + 3],
+                buf[VDIFHEAD_SIZE + 4], buf[VDIFHEAD_SIZE + 5], buf[VDIFHEAD_SIZE + 6], buf[VDIFHEAD_SIZE + 7],
+                buf[VDIFHEAD_SIZE + 8], buf[VDIFHEAD_SIZE + 9], buf[VDIFHEAD_SIZE +10], buf[VDIFHEAD_SIZE +11],
+                buf[VDIFHEAD_SIZE +12], buf[VDIFHEAD_SIZE +13], buf[VDIFHEAD_SIZE +14], buf[VDIFHEAD_SIZE +15]);
+            prevPageID = pageID;
         }
 	}
 //------------------------------------------ Stop Sampling
-	// fclose(dumpfile_ptr);
+	fclose(dumpfile_ptr);
 	close(sock);
 	param_ptr->validity &= (~ACTIVE);		// Set Sampling Activity Bit to 0
 
